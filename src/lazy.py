@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 from functools import wraps
+from typing import Any
 import operator
 
 __all__ = (
     'LazyObject',
-    'LazyWrapper'
 )
 
 
@@ -14,8 +14,8 @@ empty = object()
 class LazyObject:
 
     def __init__(self, factory: type, *args, **kwargs):
-        self.__dict__['_wrapped'] = empty
         self.__dict__.update(
+            _wrapped=empty,
             __factory=factory,
             __args=args,
             __kwargs=kwargs
@@ -36,7 +36,7 @@ class LazyObject:
             return func(self._wrapped, *args, **kwargs)
         return inner
 
-    def __setattr__(self, name: str, value):
+    def __setattr__(self, name: str, value: Any) -> None:
         """ handle special variables and redirect others to wrapped """
         if name in {'_wrapped'}:
             self.__dict__[name] = value
@@ -45,8 +45,8 @@ class LazyObject:
                 self._setup()
             setattr(self._wrapped, name, value)
 
-    def __delattr__(self, name):
-        if name != '_wrapped':
+    def __delattr__(self, name: str) -> None:
+        if name not in {'_wrapped'}:
             if self._wrapped is empty:
                 self._setup()
             delattr(self._wrapped, name)
@@ -69,17 +69,3 @@ class LazyObject:
     __iter__ = new_method_proxy(iter)
     __len__ = new_method_proxy(len)
     __contains__ = new_method_proxy(operator.contains)
-
-
-def LazyWrapper(cls, *args, **kwargs):
-
-    ClassName = cls.__name__
-
-    class LazyClass(LazyObject):
-
-        __metaclass__ = cls
-
-        def __init__(self, cls, *args, **kwargs):
-            super().__init__(cls, *args, **kwargs)
-
-    return LazyClass(cls, *args, **kwargs)
